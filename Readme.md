@@ -1,14 +1,8 @@
-package mq
+# mq - RabbitMQ client library for Go
 
-import (
-	"bytes"
-	"fmt"
-	amqp "github.com/rabbitmq/amqp091-go"
-	"github.com/stretchr/testify/assert"
-	"testing"
-	"time"
-)
+## Usage example
 
+```go
 var exampleSchema = []byte(`
 exchanges:
   exchange0:
@@ -62,3 +56,4 @@ func Test_Example(t *testing.T) {
 
 	time.Sleep(1 * time.Second) // Wait for the consumer receive and print the messages
 }
+```
