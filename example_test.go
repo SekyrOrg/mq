@@ -6,6 +6,7 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/stretchr/testify/assert"
 	"testing"
+	"time"
 )
 
 var exampleSchema = []byte(`
@@ -22,7 +23,7 @@ queues:
 `)
 
 func Test_Example(t *testing.T) {
-	// Create a new channel
+	// Create a new connection
 	conn, err := NewConnection("amqp://user:bitnami@localhost:5672/")
 	assert.NoError(t, err)
 	defer conn.Close()
@@ -32,16 +33,23 @@ func Test_Example(t *testing.T) {
 	assert.NoError(t, err)
 	err = schema.Create(conn)
 	assert.NoError(t, err)
-
 	defer schema.Delete(conn)
-	go conn.Queue("queue0").Consume(func(ch *amqp.Channel, msg *amqp.Delivery) {
+
+	// Create a new channel
+	channel, err := conn.Channel()
+	assert.NoError(t, err)
+	defer channel.Close()
+
+	// Consume messages from queue0
+	channel.Queue("queue0").ConsumeFunc(func(ch *Channel, msg *amqp.Delivery) {
 		fmt.Println(string(msg.Body))
 	})
 
-	// Create a new exchange
-	ex0 := conn.Exchange(WithName("exchange0"))
-	// Create a new publishing
+	// Create a new publishing to send
 	publishing := NewPublishing([]byte("Hello World!"), WithContentType(ContentText))
+
+	// Create a new exchange
+	ex0 := channel.Exchange(WithName("exchange0"))
 	// Send a message
 	err = ex0.Send("key1", publishing)
 	assert.NoError(t, err)
@@ -51,5 +59,7 @@ func Test_Example(t *testing.T) {
 	// Send a blob
 	err = ex0.SendBinary("key1", []byte("Hello BLOB!"))
 	assert.NoError(t, err)
+
+	time.Sleep(1 * time.Second) // Wait for the consumer receive and print the messages
 
 }

@@ -53,18 +53,19 @@ func (s *Schema) Create(c *Connection) error {
 	if err != nil {
 		return err
 	}
+	rawCh := ch.RawChannel()
 
 	// Create exchanges according to settings
 	for name, e := range s.Exchanges {
-		if err = ch.ExchangeDeclarePassive(name, e.Type, e.Durable, e.Autodelete, e.Internal, e.Nowait, nil); err == nil {
+		if err = rawCh.ExchangeDeclarePassive(name, e.Type, e.Durable, e.Autodelete, e.Internal, e.Nowait, nil); err == nil {
 			continue
 		}
-		ch, err = c.c.Channel()
+		rawCh, err = c.c.Channel()
 		if err != nil {
 			return err
 		}
 
-		err = ch.ExchangeDeclare(name, e.Type, e.Durable, e.Autodelete, e.Internal, e.Nowait, nil)
+		err = rawCh.ExchangeDeclare(name, e.Type, e.Durable, e.Autodelete, e.Internal, e.Nowait, nil)
 		if err != nil {
 			return err
 		}
@@ -72,16 +73,16 @@ func (s *Schema) Create(c *Connection) error {
 
 	// Create queues according to settings
 	for name, q := range s.Queues {
-		if _, err := ch.QueueDeclarePassive(name, q.Durable, q.Autodelete, q.Exclusive, q.Nowait, nil); err == nil {
+		if _, err := rawCh.QueueDeclarePassive(name, q.Durable, q.Autodelete, q.Exclusive, q.Nowait, nil); err == nil {
 			continue
 		}
 
-		ch, err = c.c.Channel()
+		rawCh, err = c.c.Channel()
 		if err != nil {
 			return err
 		}
 
-		if _, err = ch.QueueDeclare(name, q.Durable, q.Autodelete, q.Exclusive, q.Nowait, nil); err != nil {
+		if _, err = rawCh.QueueDeclare(name, q.Durable, q.Autodelete, q.Exclusive, q.Nowait, nil); err != nil {
 			return err
 		}
 	}
@@ -92,7 +93,7 @@ func (s *Schema) Create(c *Connection) error {
 	// This way it's still possible but now is an error on the user side)
 	for name, e := range s.Exchanges {
 		for _, b := range e.Bindings {
-			if err = ch.ExchangeBind(name, b.Key, b.Exchange, b.Nowait, nil); err != nil {
+			if err = rawCh.ExchangeBind(name, b.Key, b.Exchange, b.Nowait, nil); err != nil {
 				return err
 			}
 		}
@@ -100,13 +101,13 @@ func (s *Schema) Create(c *Connection) error {
 
 	for name, q := range s.Queues {
 		for _, b := range q.Bindings {
-			if err = ch.QueueBind(name, b.Key, b.Exchange, b.Nowait, nil); err != nil {
+			if err = rawCh.QueueBind(name, b.Key, b.Exchange, b.Nowait, nil); err != nil {
 				return err
 			}
 		}
 	}
 
-	ch.Close()
+	rawCh.Close()
 	return nil
 }
 

@@ -5,6 +5,8 @@ import (
 	"io"
 )
 
+type ReplyFunc func(ch *Channel, msg *amqp.Delivery)
+
 // Connection is a struct which holds all necessary data for RabbitMQ channel
 type Connection struct {
 	c *amqp.Connection
@@ -17,11 +19,6 @@ func NewConnection(dsn string) (*Connection, error) {
 		return nil, err
 	}
 	return &Connection{conn}, nil
-}
-
-func (c *Connection) Channel() (*amqp.Channel, error) {
-	return c.c.Channel()
-
 }
 
 // Close closes channel to RabbitMQ
@@ -37,14 +34,11 @@ func (c *Connection) Schema(new io.Reader) error {
 	return settings.Create(c)
 }
 
-func (c *Connection) Exchange(options ...ExchangeOption) *Exchange {
-	return NewExchange(c, options...)
-}
-
-func (c *Connection) Queue(name string, options ...QueueOption) (*Queue, error) {
-	ch, err := c.Channel()
+func (c *Connection) Channel() (*Channel, error) {
+	ch, err := NewChannel(c.c)
 	if err != nil {
 		return nil, err
 	}
-	return NewQueue(name, ch, options...)
+	return ch, nil
+
 }

@@ -2,11 +2,10 @@ package mq
 
 import amqp "github.com/rabbitmq/amqp091-go"
 
-type ReplyFunc func(ch *amqp.Channel, msg *amqp.Delivery)
 type QueueOption func(p *Queue)
 
 type Queue struct {
-	channel   *amqp.Channel
+	channel   *Channel
 	name      string
 	consumer  string
 	autoAck   bool
@@ -18,7 +17,7 @@ type Queue struct {
 	errChan   chan error
 }
 
-func NewQueue(name string, channel *amqp.Channel, options ...QueueOption) *Queue {
+func NewQueue(name string, channel *Channel, options ...QueueOption) *Queue {
 	q := &Queue{
 		channel:   channel,
 		name:      name,
@@ -32,39 +31,35 @@ func NewQueue(name string, channel *amqp.Channel, options ...QueueOption) *Queue
 	return q
 }
 
-func (q *Queue) consumeBlocking(ch *amqp.Channel, msgs <-chan amqp.Delivery, f ReplyFunc) error {
+func (q *Queue) consumeBlocking(msgs <-chan amqp.Delivery, f ReplyFunc) error {
 	for {
 		select {
 		case d := <-msgs:
-			f(ch, &d)
+			f(q.channel, &d)
 		case <-q.closeChan:
-			ch.Close()
 			return nil
 		}
 	}
 }
 
-func (q *Queue) Consume(f ReplyFunc) error {
-	ch, err := q.channel.Channel()
+func (q *Queue) Consume() (<-chan amqp.Delivery, error) {
+	msgs, err := q.channel.RawChannel().Consume(q.name, q.consumer, q.autoAck, q.exclusive, q.noLocal, q.noWait, q.args)
+	if err != nil {
+		return nil, err
+	}
+	return msgs, nil
+}
+
+func (q *Queue) ConsumeFunc(f ReplyFunc) {
+	msgs, err := q.Consume()
 	if err != nil {
 		q.errChan <- err
 	}
-	return q.ConsumeOnChannel(ch, f)
-
-}
-
-func (q *Queue) ConsumeOnChannel(ch *amqp.Channel, f ReplyFunc) error {
-	// start consuming
-	msgs, err := ch.Consume(q.name, q.consumer, q.autoAck, q.exclusive, q.noLocal, q.noWait, q.args)
-	if err != nil {
-		return err
-	}
-	go func(msgs <-chan amqp.Delivery, f ReplyFunc, ch *amqp.Channel, errChan chan error) {
-		for msg := range msgs {
-			f(ch, &msg)
+	go func() {
+		if err := q.consumeBlocking(msgs, f); err != nil {
+			q.errChan <- err
 		}
-	}(msgs, f, ch, q.errChan)
-	return nil
+	}()
 }
 
 func WithAutoAck(autoAck bool) QueueOption {

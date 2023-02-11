@@ -56,7 +56,8 @@ func NewPublishingWithCompression(bodyReader io.Reader, options ...PublishingOpt
 	if err != nil {
 		return nil, fmt.Errorf("unable to read from gzip reader, err: %w", err)
 	}
-	return NewPublishing(body, options...), nil
+	opts := append(options, WithContentEncoding("gzip"))
+	return NewPublishing(body, opts...), nil
 }
 
 func WithPriority(priority uint8) PublishingOption {
