@@ -1,8 +1,9 @@
-package mq
+package examples
 
 import (
 	"bytes"
 	"fmt"
+	"github.com/SekyrOrg/mq"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -24,12 +25,12 @@ queues:
 
 func Test_Example(t *testing.T) {
 	// Create a new connection
-	conn, err := NewConnection("amqp://user:bitnami@localhost:5672/")
+	conn, err := mq.NewConnection("amqp://user:bitnami@localhost:5672/")
 	assert.NoError(t, err)
 	defer conn.Close()
 
 	// Create a new scheme
-	schema, err := NewSchemaFromYaml(bytes.NewReader(exampleSchema))
+	schema, err := mq.NewSchemaFromYaml(bytes.NewReader(exampleSchema))
 	assert.NoError(t, err)
 	err = schema.Create(conn)
 	assert.NoError(t, err)
@@ -41,15 +42,15 @@ func Test_Example(t *testing.T) {
 	defer channel.Close()
 
 	// Consume messages from queue0
-	channel.Queue("queue0").ConsumeFunc(func(ch *Channel, msg *amqp.Delivery) {
+	channel.Queue("queue0").ConsumeFunc(func(ch *mq.Channel, msg *amqp.Delivery) {
 		fmt.Println(string(msg.Body))
 	})
 
 	// Create a new publishing to send
-	publishing := NewPublishing([]byte("Hello World!"), WithContentType(ContentText))
+	publishing := mq.NewPublishing([]byte("Hello World!"), mq.WithContentType(mq.ContentText))
 
 	// Create a new exchange
-	ex0 := channel.Exchange(WithName("exchange0"))
+	ex0 := channel.Exchange(mq.WithName("exchange0"))
 	// Send a message
 	err = ex0.Send("key1", publishing)
 	assert.NoError(t, err)
