@@ -5,7 +5,7 @@ import (
 	"io"
 )
 
-type ReplyFunc func(ch *Channel, msg *amqp.Delivery)
+type ReplyFunc func(msg *Message)
 
 // Connection is a struct which holds all necessary data for RabbitMQ channel
 type Connection struct {

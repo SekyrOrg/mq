@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/SekyrOrg/mq"
-	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
@@ -42,8 +41,8 @@ func Test_Example(t *testing.T) {
 	defer channel.Close()
 
 	// Consume messages from queue0
-	channel.Queue("queue0").ConsumeFunc(func(ch *mq.Channel, msg *amqp.Delivery) {
-		fmt.Println(string(msg.Body))
+	channel.Queue("queue0").ConsumeFunc(func(msg *mq.Message) {
+		fmt.Println(msg)
 	})
 
 	// Create a new publishing to send

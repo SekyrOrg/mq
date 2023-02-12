@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/SekyrOrg/mq"
-	amqp "github.com/rabbitmq/amqp091-go"
 	"math/rand"
 	"strconv"
 )
@@ -49,7 +48,7 @@ func main() {
 	ch.Queue("beacon.event.new",
 		mq.WithConsumer("ReplyToConsumer"),
 		mq.WithAutoAck(false),
-	).ConsumeFunc(func(ch *mq.Channel, msg *amqp.Delivery) {
+	).ConsumeFunc(func(msg *mq.Message) {
 		fmt.Println("recieved Event", msg)
 		p := mq.NewPublishing(
 			[]byte("World!"),
@@ -57,11 +56,12 @@ func main() {
 			mq.WithCorrelationId(getCorrelationId()),
 		)
 		fmt.Println("Sending response", p)
-		if err := ch.Exchange().Send(msg.ReplyTo, p); err != nil {
-			fmt.Printf("error sending, %s", err)
+		if err := msg.Reply(p); err != nil {
+			fmt.Printf("error replying, %s", err)
 		}
+
 		fmt.Println("Acknowledging the delivery")
-		if err = ch.RawChannel().Ack(msg.DeliveryTag, false); err != nil {
+		if err = msg.Ack(); err != nil {
 			fmt.Printf("err ack, err: %s ", err)
 		}
 	})

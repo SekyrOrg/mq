@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/SekyrOrg/mq"
-	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 var dsn = "amqp://user:bitnami@localhost:5672/"
@@ -47,8 +46,8 @@ func main() {
 
 	p := mq.NewPublishing([]byte("Hello World!"), mq.WithContentType(mq.ContentText))
 	err = ch.Exchange(mq.WithName("beacon.event")).
-		SendWithDirectReply("new", p, func(ch *mq.Channel, msg *amqp.Delivery) {
-			fmt.Printf("Received a directReply: %s\n", string(msg.Body))
+		SendWithDirectReply("new", p, func(msg *mq.Message) {
+			fmt.Printf("Received a directReply: %s\n", msg)
 		})
 	if err != nil {
 		fmt.Printf("Error: %s", err)

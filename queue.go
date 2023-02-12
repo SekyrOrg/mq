@@ -35,7 +35,7 @@ func (q *Queue) consumeBlocking(msgs <-chan amqp.Delivery, f ReplyFunc) error {
 	for {
 		select {
 		case d := <-msgs:
-			f(q.channel, &d)
+			f(NewMessage(q.channel, &d))
 		case <-q.closeChan:
 			return nil
 		}

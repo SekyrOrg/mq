@@ -1,7 +1,9 @@
 package mq
 
 import (
+	"bytes"
 	"compress/gzip"
+	"encoding/json"
 	"fmt"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"io"
@@ -46,7 +48,18 @@ func NewPublishingFromReader(bodyReader io.Reader, options ...PublishingOption) 
 	return NewPublishing(body, options...), nil
 }
 
-func NewPublishingWithCompression(bodyReader io.Reader, options ...PublishingOption) (*Publishing, error) {
+func NewPublishingJsonGzip(obj any, options ...PublishingOption) (*Publishing, error) {
+	buf := &bytes.Buffer{}
+	gz := gzip.NewWriter(buf)
+	defer gz.Close()
+	if err := json.NewEncoder(buf).Encode(obj); err != nil {
+		return nil, fmt.Errorf("unable to encode json, err: %w", err)
+	}
+	opts := append(options, WithContentType(ContentJSON), WithContentEncoding("gzip"))
+	return NewPublishing(buf.Bytes(), opts...), nil
+}
+
+func NewPublishingWithGzip(bodyReader io.Reader, options ...PublishingOption) (*Publishing, error) {
 	r, err := gzip.NewReader(bodyReader)
 	if err != nil {
 		return nil, fmt.Errorf("unable to create gzip reader, err: %w", err)
