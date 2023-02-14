@@ -1,7 +1,9 @@
 package mq
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 )
 
 type ExchangeOption func(p *Exchange)
@@ -11,11 +13,13 @@ type Exchange struct {
 	name      string
 	mandatory bool
 	immediate bool
+	context   context.Context
 }
 
 func NewExchange(ch *Channel, options ...ExchangeOption) *Exchange {
 	e := &Exchange{
 		channel: ch,
+		context: context.Background(),
 	}
 	for _, option := range options {
 		option(e)
@@ -24,9 +28,8 @@ func NewExchange(ch *Channel, options ...ExchangeOption) *Exchange {
 }
 
 func (e *Exchange) Send(key string, p *Publishing) error {
-
 	// Publish message
-	if err := e.channel.RawChannel().PublishWithContext(context.Background(), e.name, key, e.mandatory, e.immediate, p.Publishing); err != nil {
+	if err := e.channel.RawChannel().PublishWithContext(e.context, e.name, key, e.mandatory, e.immediate, p.Publishing); err != nil {
 		return err
 	}
 	return nil
@@ -42,11 +45,32 @@ func (e *Exchange) SendBinary(key string, msg []byte) error {
 	return e.Send(key, NewPublishing(msg, WithContentType("application/octet-stream"), WithDeliveryMode(Persistent)))
 }
 
-func (e *Exchange) SendWithDirectReply(key string, p *Publishing, f ReplyFunc) error {
-	NewQueue("amq.rabbitmq.reply-to", e.channel, WithConsumer("ReplyToCustomer")).ConsumeFunc(f)
+func (e *Exchange) SendJson(key string, obj any) error {
+	buf := &bytes.Buffer{}
+	if err := json.NewEncoder(buf).Encode(obj); err != nil {
+		return err
+	}
+	return e.Send(key, NewPublishing(buf.Bytes(), WithContentType("application/json"), WithDeliveryMode(Persistent)))
+
+}
+
+func (e *Exchange) SendWithDirectReply(key string, p *Publishing) (*Message, error) {
+	defer e.channel.Close()
+	msgs, err := NewQueue("amq.rabbitmq.reply-to", e.channel, WithConsumer("ReplyToCustomer")).Consume()
+	if err != nil {
+		return nil, err
+	}
 	p.ReplyTo = "amq.rabbitmq.reply-to"
 	p.CorrelationId = RandomCorrelationId()
-	return e.Send(key, p)
+	if err := e.Send(key, p); err != nil {
+		return nil, err
+	}
+	select {
+	case msg := <-msgs:
+		return NewMessage(e.channel, &msg), nil
+	case <-e.context.Done():
+		return nil, e.context.Err()
+	}
 }
 
 /*
@@ -79,5 +103,11 @@ func WithImmediateSet() ExchangeOption {
 func WithName(name string) ExchangeOption {
 	return func(e *Exchange) {
 		e.name = name
+	}
+}
+
+func WithContext(ctx context.Context) ExchangeOption {
+	return func(e *Exchange) {
+		e.context = ctx
 	}
 }
