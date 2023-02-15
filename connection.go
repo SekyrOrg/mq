@@ -12,7 +12,7 @@ type Connection struct {
 	c *amqp.Connection
 }
 
-// NewConnection connects to RabbitMQ by dsn and return Connection object which uses openned channel during function calls issued later in code
+// NewConnection connects to RabbitMQ by dsn and return Connection object which uses channel during function calls issued later in code
 func NewConnection(dsn string) (*Connection, error) {
 	conn, err := amqp.Dial(dsn)
 	if err != nil {

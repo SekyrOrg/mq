@@ -37,7 +37,7 @@ type QueueSpec struct {
 	Bindings   []BindingDefinition `yaml:"bindings"`
 }
 
-// NewSettingsFromYaml reads yaml with specification of all exchanges and queues from io.Reader
+// NewSchemaFromYaml reads yaml with specification of all exchanges and queues from io.Reader
 func NewSchemaFromYaml(r io.Reader) (*Schema, error) {
 	var s Schema
 
@@ -87,7 +87,7 @@ func (s *Schema) Create(c *Connection) error {
 		}
 	}
 
-	// Create bindings only now that everything is setup.
+	// Create bindings only now that everything is set up.
 	// (If the bindings were created in one run together with exchanges and queues,
 	// it would be possible to create binding to not yet existent queue.
 	// This way it's still possible but now is an error on the user side)
