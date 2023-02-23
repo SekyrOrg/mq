@@ -12,6 +12,10 @@ type Connection struct {
 	c *amqp.Connection
 }
 
+func NewConnectionFromConfig(config ConnectionConfig) (*Connection, error) {
+	return NewConnection("amqp://" + config.Username + ":" + config.Password + "@" + config.Host + ":" + config.Port + "/")
+}
+
 // NewConnection connects to RabbitMQ by dsn and return Connection object which uses channel during function calls issued later in code
 func NewConnection(dsn string) (*Connection, error) {
 	conn, err := amqp.Dial(dsn)
@@ -26,12 +30,15 @@ func (c *Connection) Close() error {
 	return c.c.Close()
 }
 
-func (c *Connection) Schema(new io.Reader) error {
-	settings, err := NewSchemaFromYaml(new)
+func (c *Connection) CreateSchema(schema Schema) error {
+	return schema.Create(c)
+}
+func (c *Connection) CreateSchemaFromYaml(new io.Reader) error {
+	schema, err := NewSchemaFromYaml(new)
 	if err != nil {
 		return err
 	}
-	return settings.Create(c)
+	return schema.Create(c)
 }
 
 func (c *Connection) Channel() (*Channel, error) {
@@ -40,5 +47,11 @@ func (c *Connection) Channel() (*Channel, error) {
 		return nil, err
 	}
 	return ch, nil
+}
 
+type ConnectionConfig struct {
+	Host     string
+	Port     string
+	Username string
+	Password string
 }

@@ -35,7 +35,7 @@ func main() {
 	}
 	defer conn.Close()
 
-	if err := conn.Schema(bytes.NewReader(data)); err != nil {
+	if err := conn.CreateSchemaFromYaml(bytes.NewReader(data)); err != nil {
 		panic(err)
 	}
 	ch, err := conn.Channel()
@@ -45,14 +45,14 @@ func main() {
 	defer ch.Close()
 
 	p := mq.NewPublishing([]byte("Hello World!"), mq.WithContentType(mq.ContentText))
-	err = ch.Exchange(mq.WithName("beacon.event")).
-		SendWithDirectReply("new", p, func(msg *mq.Message) {
-			fmt.Printf("Received a directReply: %s\n", msg)
-		})
+	msg, err := ch.Exchange(mq.WithName("beacon.event")).
+		PublishWithDirectReply("new", p)
 	if err != nil {
 		fmt.Printf("Error: %s", err)
 		return
 	}
+
+	fmt.Println("recieved Event", msg)
 
 	fmt.Println("waiting forever")
 	forever := make(chan bool)

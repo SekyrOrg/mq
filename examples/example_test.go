@@ -50,14 +50,14 @@ func Test_Example(t *testing.T) {
 
 	// Create a new exchange
 	ex0 := channel.Exchange(mq.WithName("exchange0"))
-	// Send a message
-	err = ex0.Send("key1", publishing)
+	// Publish a message
+	err = ex0.Publish("key1", publishing)
 	assert.NoError(t, err)
-	// Send a plain message
-	err = ex0.SendText("key1", "Hello Plain!")
+	// Publish a plain message
+	err = ex0.PublishText("key1", "Hello Plain!")
 	assert.NoError(t, err)
-	// Send a blob
-	err = ex0.SendBinary("key1", []byte("Hello BLOB!"))
+	// Publish a blob
+	err = ex0.PublishBinary("key1", []byte("Hello BLOB!"))
 	assert.NoError(t, err)
 
 	time.Sleep(1 * time.Second) // Wait for the consumer receive and print the messages

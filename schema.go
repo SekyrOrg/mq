@@ -5,6 +5,17 @@ import (
 	"io"
 )
 
+const (
+	// ExchangeTypeDirect is a direct exchange type
+	ExchangeTypeDirect = "direct"
+	// ExchangeTypeFanout is a fanout exchange type
+	ExchangeTypeFanout = "fanout"
+	// ExchangeTypeTopic is a topic exchange type
+	ExchangeTypeTopic = "topic"
+	// ExchangeTypeHeaders is a headers exchange type
+	ExchangeTypeHeaders = "headers"
+)
+
 // Schema is a specification of all queues and exchanges together with all bindings.
 type Schema struct {
 	Exchanges map[string]ExchangeDefinition `yaml:"exchanges"`

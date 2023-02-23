@@ -1,6 +1,9 @@
 package mq
 
-import amqp "github.com/rabbitmq/amqp091-go"
+import (
+	"fmt"
+	amqp "github.com/rabbitmq/amqp091-go"
+)
 
 type QueueOption func(p *Queue)
 
@@ -31,6 +34,11 @@ func NewQueue(name string, channel *Channel, options ...QueueOption) *Queue {
 	return q
 }
 
+func (q *Queue) Close() error {
+	q.closeChan <- true
+	return q.channel.Close()
+}
+
 func (q *Queue) consumeBlocking(msgs <-chan amqp.Delivery, f ReplyFunc) error {
 	for {
 		select {
@@ -43,9 +51,9 @@ func (q *Queue) consumeBlocking(msgs <-chan amqp.Delivery, f ReplyFunc) error {
 }
 
 func (q *Queue) Consume() (<-chan amqp.Delivery, error) {
-	msgs, err := q.channel.RawChannel().Consume(q.name, q.consumer, q.autoAck, q.exclusive, q.noLocal, q.noWait, q.args)
+	msgs, err := q.channel.channel.Consume(q.name, q.consumer, q.autoAck, q.exclusive, q.noLocal, q.noWait, q.args)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to consume from queue %s: %w", q.name, err)
 	}
 	return msgs, nil
 }
@@ -53,11 +61,11 @@ func (q *Queue) Consume() (<-chan amqp.Delivery, error) {
 func (q *Queue) ConsumeFunc(f ReplyFunc) {
 	msgs, err := q.Consume()
 	if err != nil {
-		q.errChan <- err
+		q.errChan <- fmt.Errorf("failed to consume from queue %s: %w", q.name, err)
 	}
 	go func() {
 		if err := q.consumeBlocking(msgs, f); err != nil {
-			q.errChan <- err
+			q.errChan <- fmt.Errorf("failed to consume from queue %s: %w", q.name, err)
 		}
 	}()
 }

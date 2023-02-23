@@ -20,7 +20,7 @@ func NewMessage(ch *Channel, delivery *amqp.Delivery) *Message {
 }
 
 func (m *Message) Ack() error {
-	return m.ch.RawChannel().Ack(m.Delivery.DeliveryTag, false)
+	return m.Acknowledger.Ack(m.Delivery.DeliveryTag, false)
 }
 
 func (m *Message) Read(b []byte) (int, error) {
@@ -32,7 +32,7 @@ func (m *Message) Bytes() []byte {
 }
 
 func (m *Message) Reply(p *Publishing) error {
-	return m.ch.Exchange().Send(m.ReplyTo, p)
+	return m.ch.Exchange().Publish(m.ReplyTo, p)
 }
 
 func (m *Message) String() string {

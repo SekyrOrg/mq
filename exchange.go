@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 )
 
 type ExchangeOption func(p *Exchange)
@@ -27,34 +28,37 @@ func NewExchange(ch *Channel, options ...ExchangeOption) *Exchange {
 	return e
 }
 
-func (e *Exchange) Send(key string, p *Publishing) error {
+func (e *Exchange) Publish(key string, p *Publishing) error {
+	if e.channel.channel.IsClosed() {
+		return fmt.Errorf("channel is closed")
+	}
 	// Publish message
 	if err := e.channel.RawChannel().PublishWithContext(e.context, e.name, key, e.mandatory, e.immediate, p.Publishing); err != nil {
-		return err
+		return fmt.Errorf("failed to publish message to exchange: '%s', key: '%s', err: %w", e.name, key, err)
 	}
 	return nil
 }
 
-// SendText publishes plain text message to an exchange with specific routing key
-func (e *Exchange) SendText(key, msg string) error {
-	return e.Send(key, NewPublishing([]byte(msg), WithContentType("text/plain"), WithDeliveryMode(Persistent)))
+// PublishText publishes plain text message to an exchange with specific routing key
+func (e *Exchange) PublishText(key, msg string) error {
+	return e.Publish(key, NewPublishing([]byte(msg), WithContentType("text/plain"), WithDeliveryMode(Persistent)))
 }
 
-// SendBinary publishes byte blob message to an exchange with specific routing key
-func (e *Exchange) SendBinary(key string, msg []byte) error {
-	return e.Send(key, NewPublishing(msg, WithContentType("application/octet-stream"), WithDeliveryMode(Persistent)))
+// PublishBinary publishes byte blob message to an exchange with specific routing key
+func (e *Exchange) PublishBinary(key string, msg []byte) error {
+	return e.Publish(key, NewPublishing(msg, WithContentType("application/octet-stream"), WithDeliveryMode(Persistent)))
 }
 
-func (e *Exchange) SendJson(key string, obj any) error {
+func (e *Exchange) PublishJson(key string, obj any) error {
 	buf := &bytes.Buffer{}
 	if err := json.NewEncoder(buf).Encode(obj); err != nil {
 		return err
 	}
-	return e.Send(key, NewPublishing(buf.Bytes(), WithContentType("application/json"), WithDeliveryMode(Persistent)))
+	return e.Publish(key, NewPublishing(buf.Bytes(), WithContentType("application/json"), WithDeliveryMode(Persistent)))
 
 }
 
-func (e *Exchange) SendWithDirectReply(key string, p *Publishing) (*Message, error) {
+func (e *Exchange) PublishWithDirectReply(key string, p *Publishing) (*Message, error) {
 	defer e.channel.Close()
 	msgs, err := NewQueue("amq.rabbitmq.reply-to", e.channel, WithConsumer("ReplyToCustomer")).Consume()
 	if err != nil {
@@ -62,7 +66,7 @@ func (e *Exchange) SendWithDirectReply(key string, p *Publishing) (*Message, err
 	}
 	p.ReplyTo = "amq.rabbitmq.reply-to"
 	p.CorrelationId = RandomCorrelationId()
-	if err := e.Send(key, p); err != nil {
+	if err := e.Publish(key, p); err != nil {
 		return nil, err
 	}
 	select {
@@ -73,21 +77,6 @@ func (e *Exchange) SendWithDirectReply(key string, p *Publishing) (*Message, err
 	}
 }
 
-/*
-func (e *Exchange) SendWithDirectReply(key string, p *Publishing, f ReplyFunc) error {
-
-		//defer ch.Close()
-		err = NewQueue("amq.rabbitmq.reply-to", e., WithConsumer("ReplyToCustomer")).
-			ConsumeOnChannel(ch, f)
-		if err != nil {
-			return err
-		}
-		e.channel = ch
-		p.ReplyTo = "amq.rabbitmq.reply-to"
-		p.CorrelationId = RandomCorrelationId()
-		return e.Send(key, p)
-	}
-*/
 func WithMandatorySet() ExchangeOption {
 	return func(e *Exchange) {
 		e.mandatory = true

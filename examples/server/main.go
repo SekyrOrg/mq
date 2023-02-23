@@ -36,7 +36,7 @@ func main() {
 	}
 	defer conn.Close()
 
-	if err := conn.Schema(bytes.NewReader(data)); err != nil {
+	if err := conn.CreateSchemaFromYaml(bytes.NewReader(data)); err != nil {
 		panic(err)
 	}
 
