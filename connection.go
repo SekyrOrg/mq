@@ -41,6 +41,10 @@ func (c *Connection) CreateSchemaFromYaml(new io.Reader) error {
 	return schema.Create(c)
 }
 
+func (c *Connection) NotifyClose(close chan *amqp.Error) chan *amqp.Error {
+	return c.c.NotifyClose(close)
+}
+
 func (c *Connection) Channel() (*Channel, error) {
 	ch, err := NewChannel(c.c)
 	if err != nil {
